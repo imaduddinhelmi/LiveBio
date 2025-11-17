@@ -1,0 +1,24 @@
+[Unit]
+Description=YouTube Live Scheduler Daemon
+After=network.target
+
+[Service]
+Type=simple
+User=ytlive
+Group=ytlive
+WorkingDirectory=/opt/ytlive-server
+ExecStart=/usr/bin/python3 /opt/ytlive-server/scheduler_daemon.py
+Restart=always
+RestartSec=10
+StandardOutput=append:/var/log/ytlive/daemon.log
+StandardError=append:/var/log/ytlive/daemon.log
+
+# Security settings
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/ytlive-server/data /opt/ytlive-server/logs /opt/ytlive-server/uploads
+
+[Install]
+WantedBy=multi-user.target

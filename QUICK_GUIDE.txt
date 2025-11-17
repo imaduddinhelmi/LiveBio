@@ -1,0 +1,104 @@
+================================================================================
+    📹 QUICK GUIDE - AUTO VIDEO UPLOAD
+================================================================================
+
+🚀 CARA UPLOAD VIDEO LANGSUNG (3 LANGKAH):
+────────────────────────────────────────────────────────────────────────────
+
+1. Tab "Auth" → Login dengan Google
+   
+2. Tab "Video Upload" → "Single Upload"
+   
+   1️⃣ SELECT VIDEO FILE
+      Klik tombol "📁 Select Video File"
+      
+   2️⃣ FILL VIDEO METADATA (scroll down ↓)
+      - Title: [isi judul video]
+      - Description: [isi deskripsi]
+      - Tags: [isi tags, pisah dengan koma]
+      - Category: [pilih kategori, default: 22]
+      - Privacy: [public/unlisted/private]
+      - Thumbnail: [optional, klik Select untuk upload]
+      - ☑ Enable Monetization (centang untuk monetisasi)
+      
+   3️⃣ CHOOSE UPLOAD METHOD
+      Klik tombol ORANGE BESAR:
+      
+      ⚡ UPLOAD NOW (IMMEDIATE)
+      
+3. Video langsung diupload! ✅
+
+────────────────────────────────────────────────────────────────────────────
+
+📅 CARA UPLOAD TERJADWAL (AUTO-UPLOAD):
+────────────────────────────────────────────────────────────────────────────
+
+1. Ikuti langkah 1-2 di atas
+
+2. Di bagian "⏰ Upload Schedule":
+   - Pilih waktu di "Quick Preset" (misal: "Tomorrow 08:00")
+   - ATAU isi manual Date dan Time
+   
+3. Klik tombol HIJAU BESAR:
+   
+   📅 SCHEDULE UPLOAD (AUTOMATIC)
+
+4. Di panel KANAN, klik tombol:
+   
+   ▶ Start Scheduler
+   
+5. Biarkan aplikasi tetap berjalan
+
+6. Video akan auto-upload sesuai jadwal! ⏰✅
+
+────────────────────────────────────────────────────────────────────────────
+
+💡 TIPS PENTING:
+
+✅ Tombol ORANGE = Upload langsung sekarang
+✅ Tombol HIJAU = Upload terjadwal (otomatis)
+✅ Scroll down di form metadata untuk lihat semua field
+✅ Window bisa di-resize (tarik ujung window) jika terlalu kecil
+✅ Untuk scheduled upload, WAJIB start scheduler di panel kanan
+✅ Aplikasi harus tetap berjalan untuk scheduled upload
+
+────────────────────────────────────────────────────────────────────────────
+
+📊 BATCH UPLOAD (Banyak Video):
+
+1. Tab "Video Upload" → "Batch Upload"
+2. Klik "Select Excel File" → Pilih file Excel
+3. Set "Start Time" dan "Interval"
+4. Klik "📅 Schedule All Videos"
+5. Balik ke "Single Upload" tab
+6. Klik "▶ Start Scheduler"
+
+Template Excel: sample_videos.xlsx
+
+────────────────────────────────────────────────────────────────────────────
+
+❓ TROUBLESHOOTING:
+
+Q: Tombol upload tidak terlihat?
+A: Scroll ke bawah! Tombol ada di paling bawah form.
+   Atau resize window aplikasi (tarik ujung window).
+
+Q: Video tidak terupload?
+A: Pastikan sudah klik tombol ORANGE atau HIJAU.
+   Jika pakai scheduled, pastikan scheduler sudah distart (status 🟢 Running).
+
+Q: Upload error?
+A: Check tab "Logs" untuk lihat error message detail.
+
+────────────────────────────────────────────────────────────────────────────
+
+📖 DOKUMENTASI LENGKAP:
+
+- CARA_UPLOAD_VIDEO.md (Panduan detail step-by-step)
+- VIDEO_UPLOAD_GUIDE.md (Referensi teknis lengkap)
+- README_VIDEO_UPLOAD.md (Overview fitur)
+
+────────────────────────────────────────────────────────────────────────────
+
+🎉 SELAMAT UPLOAD! 🚀
+================================================================================

@@ -1,0 +1,113 @@
+╔═══════════════════════════════════════════════════════════════╗
+║           ANDROSTREAM - QUICK START GUIDE                     ║
+║        YouTube Live Automation untuk Android                  ║
+╚═══════════════════════════════════════════════════════════════╝
+
+📱 CARA CEPAT BUILD APK:
+═══════════════════════════════════════════════════════════════
+
+1. DI LINUX/WSL:
+   ──────────────
+   sudo apt install -y git zip unzip openjdk-17-jdk python3-pip
+   pip3 install buildozer cython
+   cd androstream
+   buildozer android debug
+   
+   ➜ APK ada di: bin/AndroStream-1.0.0-debug.apk
+
+
+2. DI WINDOWS (via WSL):
+   ─────────────────────
+   # Buka PowerShell as Admin
+   wsl --install -d Ubuntu
+   
+   # Buka Ubuntu, lalu ikuti langkah Linux di atas
+
+
+3. INSTALL DI HP:
+   ──────────────
+   # Via USB (aktifkan USB Debugging di HP):
+   adb install bin/AndroStream-1.0.0-debug.apk
+   
+   # Atau copy APK ke HP manual via Bluetooth/WhatsApp
+
+
+═══════════════════════════════════════════════════════════════
+📲 CARA PAKAI APP:
+═══════════════════════════════════════════════════════════════
+
+STEP 1: SETUP API YOUTUBE
+──────────────────────────
+1. Buka: https://console.cloud.google.com/
+2. Buat project baru
+3. Enable "YouTube Data API v3"
+4. Buat OAuth 2.0 Client ID (Android/Desktop)
+5. Download JSON → rename jadi client_secret.json
+6. Transfer ke HP
+
+
+STEP 2: LOGIN PERTAMA KALI
+───────────────────────────
+1. Buka app AndroStream
+2. Tap "🔐 Authentication"
+3. Tap "Add Account"
+4. Pilih file client_secret.json
+5. Login dengan Google di browser
+6. Beri izin YouTube
+7. Selesai!
+
+
+STEP 3: BUAT BROADCAST
+──────────────────────
+1. Tap "⚡ Quick Create"
+2. Isi title, description, tags
+3. Pilih kategori dan privacy
+4. Atur jadwal (Now, +30 min, dll)
+5. Centang opsi (DVR, Monetization)
+6. Tap "✨ Create Broadcast"
+7. Copy Broadcast ID untuk OBS
+
+
+═══════════════════════════════════════════════════════════════
+🔧 TROUBLESHOOTING:
+═══════════════════════════════════════════════════════════════
+
+❌ Build gagal?
+   └─ Cek Java: java -version (harus 11 atau 17)
+   └─ Clean build: buildozer android clean
+
+❌ App crash?
+   └─ Cek log: adb logcat | grep python
+   └─ Pastikan Android 5.0+ (API 21)
+
+❌ OAuth tidak jalan?
+   └─ Cek client_secret.json benar
+   └─ Pastikan YouTube Data API v3 aktif
+
+❌ File chooser kosong?
+   └─ Beri izin Storage di Settings
+   └─ Letakkan client_secret.json di Downloads
+
+
+═══════════════════════════════════════════════════════════════
+📚 DOKUMENTASI LENGKAP:
+═══════════════════════════════════════════════════════════════
+
+README.md              → Panduan lengkap (English)
+PANDUAN_INDONESIA.md   → Panduan lengkap (Indonesia)
+
+
+═══════════════════════════════════════════════════════════════
+💡 TIPS:
+═══════════════════════════════════════════════════════════════
+
+✓ Build pertama butuh 30-60 menit (download SDK/NDK)
+✓ Build berikutnya cuma 2-5 menit
+✓ Test di desktop dulu: python main.py
+✓ Backup APK yang sudah jadi
+✓ Gunakan WiFi stabil saat build
+
+
+═══════════════════════════════════════════════════════════════
+
+Made with ❤️ using Kivy | Selamat streaming! 🎥🔴

@@ -1,0 +1,115 @@
+name: Build Android APK
+
+on:
+  push:
+    branches: [ main, master, develop ]
+    paths:
+      - 'androstream/**'
+      - '.github/workflows/android-build.yml'
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:  # Allow manual trigger
+
+jobs:
+  build:
+    name: Build APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    
+    steps:
+    - name: 📥 Checkout code
+      uses: actions/checkout@v4
+    
+    - name: 🐍 Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+    
+    - name: ☕ Set up Java
+      uses: actions/setup-java@v3
+      with:
+        distribution: 'temurin'
+        java-version: '17'
+    
+    - name: 📦 Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          zip unzip autoconf libtool pkg-config \
+          zlib1g-dev libncurses5-dev libncursesw5-dev \
+          libtinfo5 cmake libffi-dev libssl-dev \
+          build-essential git
+    
+    - name: 💾 Cache Buildozer directories
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.buildozer
+          androstream/.buildozer
+        key: buildozer-${{ runner.os }}-${{ hashFiles('androstream/buildozer.spec') }}
+        restore-keys: |
+          buildozer-${{ runner.os }}-
+    
+    - name: 💾 Cache pip packages
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: pip-${{ runner.os }}-${{ hashFiles('androstream/requirements.txt') }}
+        restore-keys: |
+          pip-${{ runner.os }}-
+    
+    - name: 🔧 Install Buildozer
+      run: |
+        pip install --upgrade pip
+        pip install buildozer cython==0.29.36
+    
+    - name: 🔨 Build Debug APK
+      working-directory: ./androstream
+      run: |
+        # Accept Android SDK licenses
+        yes | buildozer android debug || true
+        
+        # Build APK
+        buildozer android debug
+    
+    - name: 📊 Get APK info
+      id: apk_info
+      working-directory: ./androstream
+      run: |
+        APK_FILE=$(ls bin/*.apk | head -n 1)
+        APK_SIZE=$(du -h "$APK_FILE" | cut -f1)
+        APK_NAME=$(basename "$APK_FILE")
+        echo "apk_file=$APK_FILE" >> $GITHUB_OUTPUT
+        echo "apk_size=$APK_SIZE" >> $GITHUB_OUTPUT
+        echo "apk_name=$APK_NAME" >> $GITHUB_OUTPUT
+        echo "✅ APK built successfully: $APK_NAME ($APK_SIZE)"
+    
+    - name: 📤 Upload APK as artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: AndroStream-Debug-APK
+        path: androstream/bin/*.apk
+        retention-days: 30
+    
+    - name: 💬 Comment APK info (on PR)
+      if: github.event_name == 'pull_request'
+      uses: actions/github-script@v7
+      with:
+        script: |
+          github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: `## 📱 APK Build Successful!\n\n✅ **APK Name:** ${{ steps.apk_info.outputs.apk_name }}\n📦 **Size:** ${{ steps.apk_info.outputs.apk_size }}\n\n[Download APK from Artifacts](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})`
+          })
+    
+    - name: 📝 Build summary
+      run: |
+        echo "### 🎉 Build Complete!" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "**APK Details:**" >> $GITHUB_STEP_SUMMARY
+        echo "- 📱 Name: \`${{ steps.apk_info.outputs.apk_name }}\`" >> $GITHUB_STEP_SUMMARY
+        echo "- 📦 Size: \`${{ steps.apk_info.outputs.apk_size }}\`" >> $GITHUB_STEP_SUMMARY
+        echo "- ⏱️ Build time: ${{ github.run_id }}" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "Download from the **Artifacts** section above." >> $GITHUB_STEP_SUMMARY

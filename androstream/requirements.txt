@@ -1,0 +1,33 @@
+# AndroStream - Android Version Requirements
+# Core dependencies for building APK with Buildozer
+
+# Kivy framework
+kivy==2.2.1
+kivymd==1.1.1
+
+# Google YouTube API
+google-auth>=2.16.0
+google-auth-oauthlib>=1.0.0
+google-auth-httplib2>=0.1.0
+google-api-python-client>=2.80.0
+
+# Data processing
+pandas>=2.0.0
+openpyxl>=3.1.0
+
+# Image handling
+pillow>=9.5.0
+
+# HTTP requests
+requests>=2.31.0
+urllib3>=1.26.0
+certifi>=2023.0.0
+chardet>=5.0.0
+idna>=3.4
+
+# Python for Android specific
+pyjnius
+
+# Android specific (automatically included by buildozer)
+# android
+# jnius

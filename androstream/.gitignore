@@ -1,0 +1,40 @@
+# Buildozer files
+.buildozer/
+bin/
+build/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+
+# Android
+*.apk
+*.aab
+local.properties
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Credentials (IMPORTANT - Never commit these!)
+client_secret*.json
+token.pickle
+credentials.json
+.ytlive/
+
+# Logs
+*.log
+
+# Build outputs
+*.spec.bak

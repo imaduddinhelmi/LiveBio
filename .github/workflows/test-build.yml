@@ -1,0 +1,77 @@
+name: Test Build (Quick)
+
+on:
+  pull_request:
+    paths:
+      - 'androstream/**'
+  workflow_dispatch:
+
+jobs:
+  quick-test:
+    name: Quick Build Test
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    
+    steps:
+    - name: 📥 Checkout code
+      uses: actions/checkout@v4
+    
+    - name: 🐍 Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+    
+    - name: ☕ Set up Java
+      uses: actions/setup-java@v3
+      with:
+        distribution: 'temurin'
+        java-version: '17'
+    
+    - name: 📦 Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          zip unzip autoconf libtool pkg-config \
+          zlib1g-dev libncurses5-dev
+    
+    - name: 🔧 Install Buildozer
+      run: |
+        pip install --upgrade pip
+        pip install buildozer cython==0.29.36
+    
+    - name: ✅ Validate buildozer.spec
+      working-directory: ./androstream
+      run: |
+        buildozer --version
+        echo "✅ Buildozer installed successfully"
+        
+        # Check if buildozer.spec is valid
+        if [ -f "buildozer.spec" ]; then
+          echo "✅ buildozer.spec found"
+          
+          # Extract key values
+          echo "📋 Configuration:"
+          grep "^title = " buildozer.spec
+          grep "^package.name = " buildozer.spec
+          grep "^version = " buildozer.spec
+          grep "^requirements = " buildozer.spec
+        else
+          echo "❌ buildozer.spec not found!"
+          exit 1
+        fi
+    
+    - name: ✅ Validate Python files
+      working-directory: ./androstream
+      run: |
+        echo "Checking Python syntax..."
+        python -m py_compile main.py
+        python -m py_compile auth.py
+        python -m py_compile youtube_service.py
+        echo "✅ All Python files are valid"
+    
+    - name: 📝 Test summary
+      run: |
+        echo "### ✅ Quick Test Passed!" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "All validation checks completed successfully." >> $GITHUB_STEP_SUMMARY
+        echo "Ready for full build." >> $GITHUB_STEP_SUMMARY

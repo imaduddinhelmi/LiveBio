@@ -1,0 +1,256 @@
+╔══════════════════════════════════════════════════════════════════╗
+║      CARA PAKAI AUTOMATIC DAILY SCHEDULER - STEP BY STEP        ║
+╚══════════════════════════════════════════════════════════════════╝
+
+┌─────────────────────────────────────────────────────────────────┐
+│ LANGKAH 1: PERSIAPAN                                            │
+└─────────────────────────────────────────────────────────────────┘
+
+1. Buka aplikasi:
+   > python main.py
+
+2. Login ke YouTube (Tab "Auth"):
+   - Select client_secret.json
+   - Klik "Add New Account"
+   - Login dengan akun YouTube
+   - Tunggu sampai muncul "Logged in as: [nama akun]"
+
+3. Siapkan file Excel dengan broadcasts yang ingin di-upload
+
+
+┌─────────────────────────────────────────────────────────────────┐
+│ LANGKAH 2: LOAD EXCEL FILE                                      │
+└─────────────────────────────────────────────────────────────────┘
+
+1. Klik tab "Import & Run"
+
+2. Klik tombol "Select Excel File"
+
+3. Pilih file Excel broadcasts Anda
+
+4. Tunggu sampai muncul:
+   ✓ "Loaded X rows successfully"
+   
+5. Preview akan muncul di bawah (cek apakah data sudah benar)
+
+
+┌─────────────────────────────────────────────────────────────────┐
+│ LANGKAH 3: SETTING BASE TIME & INTERVAL (OPSIONAL)              │
+└─────────────────────────────────────────────────────────────────┘
+
+Di section "Schedule Time", atur:
+
+• Base Time: Kapan broadcasts dimulai dari waktu pembuatan
+  Contoh: "+30 min" = broadcasts dibuat sekarang, start 30 menit lagi
+
+• Interval: Jarak antar broadcasts
+  - "0 min (all same)" = semua broadcasts scheduled di waktu yang sama
+  - "+30 min" = broadcast 1 jam 13:00, broadcast 2 jam 13:30, dst.
+
+
+┌─────────────────────────────────────────────────────────────────┐
+│ LANGKAH 4: AKTIFKAN SCHEDULER                                   │
+└─────────────────────────────────────────────────────────────────┘
+
+1. Di tab "Import & Run", lihat PANEL KANAN
+
+2. Ada section: "⏰ Automatic Daily Scheduling"
+   (Panel kanan berwarna biru, semua kontrol scheduler ada di sini)
+
+3. Set "Daily Run Time":
+   - Ketik waktu dalam format 24-jam
+   - Contoh: 09:00 (untuk jam 9 pagi)
+   - Contoh: 21:00 (untuk jam 9 malam)
+
+4. Klik tombol "▶ Enable Scheduler"
+
+5. Akan muncul konfirmasi dialog, klik OK
+
+6. Status akan berubah jadi:
+   🟢 Scheduler: Active
+   Next scheduled run: 2025-10-26 09:00:00
+
+
+┌─────────────────────────────────────────────────────────────────┐
+│ LANGKAH 5: BIARKAN APLIKASI TETAP RUNNING                       │
+└─────────────────────────────────────────────────────────────────┘
+
+PENTING:
+• Jangan tutup aplikasi
+• Komputer harus menyala saat waktu eksekusi tiba
+• Setting komputer agar tidak sleep/hibernate
+
+Scheduler akan otomatis:
+1. Me-reload Excel file (jadi bisa diupdate kapan saja)
+2. Memproses semua broadcasts di Excel
+3. Membuat broadcasts sesuai setting Base Time & Interval
+4. Log hasil eksekusi di tab "Logs"
+
+
+┌─────────────────────────────────────────────────────────────────┐
+│ MONITORING & CONTROL                                             │
+└─────────────────────────────────────────────────────────────────┘
+
+CEK STATUS:
+• Lihat di "⏰ Automatic Daily Scheduling"
+• Status indicator:
+  🟢 Active    = Scheduler berjalan
+  🟡 Configured = Sudah diset tapi belum jalan
+  ⚪ Disabled   = Tidak aktif
+
+UBAH WAKTU:
+1. Ubah waktu di "Daily Run Time"
+2. Klik "🔄 Update Time"
+3. Scheduler akan restart dengan waktu baru
+
+MATIKAN SCHEDULER:
+1. Klik tombol "⏸ Disable Scheduler"
+2. Scheduler akan berhenti
+3. Konfigurasi tetap tersimpan
+
+CEK LOG:
+• Buka tab "Logs"
+• Lihat hasil eksekusi
+• Cek error jika ada masalah
+
+
+┌─────────────────────────────────────────────────────────────────┐
+│ CONTOH PENGGUNAAN                                                │
+└─────────────────────────────────────────────────────────────────┘
+
+SKENARIO 1: Upload pagi setiap hari
+─────────────────────────────────────
+Goal: Setiap pagi jam 7, upload 10 broadcasts
+
+Setting:
+1. Daily Run Time: 07:00
+2. Base Time: +30 min (broadcasts start jam 7:30)
+3. Interval: 0 min (all same)
+
+Hasil:
+• Aplikasi membuat broadcasts setiap hari jam 07:00
+• Semua broadcasts scheduled untuk start jam 07:30
+
+
+SKENARIO 2: Upload dengan interval
+─────────────────────────────────────
+Goal: Setiap siang jam 12, upload 5 broadcasts dengan interval 2 jam
+
+Setting:
+1. Daily Run Time: 12:00
+2. Base Time: +1 hour (broadcasts start jam 13:00)
+3. Interval: +2 hours
+
+Hasil:
+• Broadcast 1: start jam 13:00
+• Broadcast 2: start jam 15:00
+• Broadcast 3: start jam 17:00
+• dst.
+
+
+SKENARIO 3: Upload malam dengan monetisasi
+─────────────────────────────────────────────
+Goal: Upload broadcasts malam hari, semua dengan monetisasi aktif
+
+Setting:
+1. Daily Run Time: 20:00
+2. Base Time: +2 hours
+3. Interval: +30 min
+4. ✓ Enable Monetization for ALL broadcasts (centang checkbox)
+
+Hasil:
+• Semua broadcasts dibuat dengan monetization enabled
+• Broadcast 1: start jam 22:00
+• Broadcast 2: start jam 22:30
+• dst.
+
+
+┌─────────────────────────────────────────────────────────────────┐
+│ TROUBLESHOOTING                                                  │
+└─────────────────────────────────────────────────────────────────┘
+
+MASALAH: Scheduler tidak jalan
+
+SOLUSI:
+□ Cek status - harus "🟢 Active"
+□ Cek Excel file masih ada di tempat yang sama
+□ Cek masih login ke YouTube
+□ Cek aplikasi tidak ditutup
+□ Restart aplikasi jika perlu
+
+
+MASALAH: Batch processing gagal
+
+SOLUSI:
+□ Buka tab "Logs" untuk lihat error
+□ Cek koneksi internet
+□ Cek quota API YouTube belum habis
+□ Test manual dulu dengan "Process Batch"
+
+
+MASALAH: Format waktu error
+
+SOLUSI:
+□ Gunakan format 24-jam: HH:MM
+□ Contoh benar: 09:00, 14:30, 21:45
+□ Contoh salah: 9:00, 2:30 PM
+
+
+┌─────────────────────────────────────────────────────────────────┐
+│ TIPS & BEST PRACTICES                                            │
+└─────────────────────────────────────────────────────────────────┘
+
+1. TEST DULU MANUAL
+   Sebelum aktifkan scheduler, test "Process Batch" manual
+   untuk pastikan semua setting sudah benar
+
+2. UPDATE EXCEL KAPAN SAJA
+   File Excel akan di-reload otomatis setiap eksekusi
+   Jadi bisa update content tanpa restart scheduler
+
+3. MONITOR LOGS
+   Cek tab "Logs" secara berkala untuk pastikan
+   eksekusi berjalan dengan baik
+
+4. BACKUP EXCEL FILE
+   Simpan backup file Excel untuk jaga-jaga
+
+5. GUNAKAN PM2 (ADVANCED)
+   Untuk running 24/7 yang lebih reliable,
+   setup PM2 (lihat PM2_SETUP_GUIDE.md)
+
+
+┌─────────────────────────────────────────────────────────────────┐
+│ FILE KONFIGURASI                                                 │
+└─────────────────────────────────────────────────────────────────┘
+
+Konfigurasi scheduler tersimpan di:
+
+Windows: C:\Users\[YourUsername]\.ytlive\schedule.json
+
+File ini menyimpan:
+• Waktu eksekusi
+• Path ke Excel file
+• Status enabled/disabled
+
+Konfigurasi akan di-load otomatis saat aplikasi dibuka
+
+
+┌─────────────────────────────────────────────────────────────────┐
+│ BANTUAN LEBIH LANJUT                                             │
+└─────────────────────────────────────────────────────────────────┘
+
+Dokumentasi lengkap:
+• SCHEDULER_GUIDE.md - Panduan detail
+• SCHEDULER_QUICKSTART.md - Quick start 5 menit
+• CHANGELOG_SCHEDULER.md - Detail fitur
+
+Ada masalah?
+• Cek tab "Logs" untuk detail error
+• Lihat FAQ di SCHEDULER_GUIDE.md
+• Restart aplikasi jika diperlukan
+
+
+════════════════════════════════════════════════════════════════════
+               SELAMAT MENGGUNAKAN AUTOMATIC SCHEDULER!
+════════════════════════════════════════════════════════════════════

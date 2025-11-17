@@ -1,0 +1,12 @@
+data/
+logs/
+uploads/
+__pycache__/
+*.pyc
+*.pyo
+*.pid
+venv/
+.env
+client_secret.json
+token.json
+*.log

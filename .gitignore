@@ -1,0 +1,33 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+
+# Buildozer
+.buildozer/
+bin/
+
+# Credentials - IMPORTANT!
+client_secret*.json
+token.pickle
+credentials.json
+.ytlive/
+Data/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Excel files with sensitive data
+*_custom_time.xlsx
+sample_*.xlsx
