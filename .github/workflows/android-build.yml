@@ -61,16 +61,20 @@ jobs:
     - name: 🔧 Install Buildozer
       run: |
         pip install --upgrade pip
-        pip install buildozer cython==0.29.36
+        pip install buildozer==1.5.0 cython==0.29.36
+        buildozer --version
     
     - name: 🔨 Build Debug APK
       working-directory: ./androstream
       run: |
-        # Accept Android SDK licenses
-        yes | buildozer android debug || true
+        # Show buildozer version
+        buildozer --version
         
-        # Build APK
-        buildozer android debug
+        # Clean any previous builds
+        buildozer android clean || true
+        
+        # Build APK with verbose output
+        buildozer -v android debug
     
     - name: 📊 Get APK info
       id: apk_info

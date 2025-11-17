@@ -32,7 +32,8 @@ version = 1.0.0
 
 # (list) Application requirements
 # comma separated e.g. requirements = sqlite3,kivy
-requirements = python3,kivy,kivymd,google-auth,google-auth-oauthlib,google-auth-httplib2,google-api-python-client,pandas,openpyxl,pillow,certifi,chardet,idna,requests,urllib3,jnius,android
+# Note: pandas & openpyxl removed - too heavy for Android, use simplified parsing
+requirements = python3==3.9.16,kivy==2.2.1,kivymd==1.1.1,google-auth,google-auth-oauthlib,google-auth-httplib2,google-api-python-client,pillow,certifi,chardet,idna,requests,urllib3,pyjnius
 
 # (str) Custom source folders for requirements
 # Sets custom source for any requirements with recipes

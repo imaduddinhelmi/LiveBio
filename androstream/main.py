@@ -23,13 +23,21 @@ import threading
 import json
 from pathlib import Path
 
-# Import core modules (akan dibuat)
+# Import core modules
 try:
     from auth import YouTubeAuth
     from youtube_service import YouTubeService
-    from excel_parser import ExcelParser
-except ImportError:
+    # Try lite version first (for Android)
+    try:
+        from excel_parser_lite import ExcelParserLite as ExcelParser
+    except ImportError:
+        try:
+            from excel_parser import ExcelParser
+        except ImportError:
+            ExcelParser = None
+except ImportError as e:
     # Fallback untuk development
+    print(f"Import warning: {e}")
     YouTubeAuth = None
     YouTubeService = None
     ExcelParser = None
