@@ -12,22 +12,30 @@ build/
 .buildozer/
 bin/
 
-# Credentials - IMPORTANT!
+# Credentials - IMPORTANT! Never commit these!
 client_secret*.json
 token.pickle
 credentials.json
 .ytlive/
 Data/
+*.token
 
 # IDE
 .vscode/
 .idea/
 *.swp
+*.swo
 
 # OS
 .DS_Store
 Thumbs.db
+desktop.ini
 
-# Excel files with sensitive data
+# Excel with sensitive data
 *_custom_time.xlsx
 sample_*.xlsx
+broadcasts_monetization.xlsx
+
+# Test files
+test_*.py
+*_test.py
