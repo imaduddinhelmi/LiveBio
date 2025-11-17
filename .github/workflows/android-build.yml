@@ -41,7 +41,7 @@ jobs:
           build-essential git
     
     - name: 💾 Cache Buildozer directories
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: |
           ~/.buildozer
@@ -51,7 +51,7 @@ jobs:
           buildozer-${{ runner.os }}-
     
     - name: 💾 Cache pip packages
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: ~/.cache/pip
         key: pip-${{ runner.os }}-${{ hashFiles('androstream/requirements.txt') }}
@@ -85,7 +85,7 @@ jobs:
         echo "✅ APK built successfully: $APK_NAME ($APK_SIZE)"
     
     - name: 📤 Upload APK as artifact
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: AndroStream-Debug-APK
         path: androstream/bin/*.apk
