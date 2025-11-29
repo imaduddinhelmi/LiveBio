@@ -1,5 +1,5 @@
 import pandas as pd
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 import config
 
 class ExcelParser:
@@ -56,13 +56,21 @@ class ExcelParser:
                     # Try ISO format: 2025-11-20T20:00:00 or 2025-11-20T20:00:00Z
                     if 'T' in sst_str:
                         if not sst_str.endswith('Z'):
-                            scheduled_start_time = sst_str + 'Z'
+                            # Parse as local time and convert to UTC
+                            dt = datetime.fromisoformat(sst_str.replace('Z', ''))
+                            # Convert local time to UTC
+                            utc_offset_seconds = datetime.now().astimezone().utcoffset().total_seconds()
+                            dt_utc = dt - timedelta(seconds=utc_offset_seconds)
+                            scheduled_start_time = dt_utc.isoformat() + 'Z'
                         else:
                             scheduled_start_time = sst_str
                     else:
                         # Try parsing as datetime and convert to ISO
                         dt = datetime.strptime(sst_str, "%Y-%m-%d %H:%M:%S")
-                        scheduled_start_time = dt.isoformat() + 'Z'
+                        # Convert local time to UTC
+                        utc_offset_seconds = datetime.now().astimezone().utcoffset().total_seconds()
+                        dt_utc = dt - timedelta(seconds=utc_offset_seconds)
+                        scheduled_start_time = dt_utc.isoformat() + 'Z'
                 except:
                     pass
         
@@ -74,7 +82,10 @@ class ExcelParser:
             if scheduled_date and scheduled_date.lower() != 'nan' and scheduled_time and scheduled_time.lower() != 'nan':
                 try:
                     dt = datetime.strptime(f"{scheduled_date} {scheduled_time}", "%Y-%m-%d %H:%M")
-                    scheduled_start_time = dt.isoformat() + 'Z'
+                    # Convert local time to UTC
+                    utc_offset_seconds = datetime.now().astimezone().utcoffset().total_seconds()
+                    dt_utc = dt - timedelta(seconds=utc_offset_seconds)
+                    scheduled_start_time = dt_utc.isoformat() + 'Z'
                 except:
                     try:
                         if isinstance(row['scheduledStartDate'], datetime):
@@ -83,11 +94,17 @@ class ExcelParser:
                             dt = datetime.strptime(scheduled_date, "%Y-%m-%d")
                         time_parts = scheduled_time.split(':')
                         dt = dt.replace(hour=int(time_parts[0]), minute=int(time_parts[1]))
-                        scheduled_start_time = dt.isoformat() + 'Z'
+                        # Convert local time to UTC
+                        utc_offset_seconds = datetime.now().astimezone().utcoffset().total_seconds()
+                        dt_utc = dt - timedelta(seconds=utc_offset_seconds)
+                        scheduled_start_time = dt_utc.isoformat() + 'Z'
                     except:
                         try:
                             dt = datetime.strptime(f"{scheduled_date} {scheduled_time}", "%d/%m/%Y %H:%M")
-                            scheduled_start_time = dt.isoformat() + 'Z'
+                            # Convert local time to UTC
+                            utc_offset_seconds = datetime.now().astimezone().utcoffset().total_seconds()
+                            dt_utc = dt - timedelta(seconds=utc_offset_seconds)
+                            scheduled_start_time = dt_utc.isoformat() + 'Z'
                         except:
                             scheduled_start_time = None
         

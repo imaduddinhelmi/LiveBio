@@ -1,7 +1,7 @@
 import customtkinter as ctk
 from tkinter import filedialog, messagebox
 import threading
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from auth import YouTubeAuth
 from excel_parser import ExcelParser
 from youtube_service import YouTubeService
@@ -686,6 +686,11 @@ class App(ctk.CTk):
         self.quick_offset.grid(row=5, column=1, padx=10, pady=5)
         self.quick_offset.set("+30 minutes")
         
+        ctk.CTkLabel(form_frame, text="Set Specific Time (24h):").grid(row=5, column=2, sticky="w", padx=10, pady=5)
+        self.quick_specific_time = ctk.CTkEntry(form_frame, width=80, placeholder_text="HH:MM")
+        self.quick_specific_time.grid(row=5, column=3, padx=10, pady=5)
+        self.quick_specific_time.insert(0, "")  # Empty = use current time
+        
         ctk.CTkLabel(form_frame, text="Scheduled Date:").grid(row=6, column=0, sticky="w", padx=10, pady=5)
         self.quick_date = ctk.CTkEntry(form_frame, width=400)
         self.quick_date.grid(row=6, column=1, padx=10, pady=5)
@@ -768,6 +773,49 @@ class App(ctk.CTk):
         }
         
         offset = offset_map.get(self.quick_offset.get(), timedelta(minutes=30))
+        
+        # Check if specific time is provided
+        specific_time_str = self.quick_specific_time.get().strip()
+        
+        if specific_time_str:
+            # Use specific time
+            try:
+                time_parts = specific_time_str.split(':')
+                if len(time_parts) == 2:
+                    specific_hour = int(time_parts[0])
+                    specific_minute = int(time_parts[1])
+                    
+                    if 0 <= specific_hour <= 23 and 0 <= specific_minute <= 59:
+                        # Calculate target date
+                        target_date = datetime.now().date() + timedelta(days=offset.days)
+                        target_time = datetime.combine(target_date, datetime.min.time())
+                        target_time = target_time.replace(hour=specific_hour, minute=specific_minute)
+                        
+                        self.quick_date.delete(0, "end")
+                        self.quick_date.insert(0, target_time.strftime("%Y-%m-%d"))
+                        
+                        self.quick_time.delete(0, "end")
+                        self.quick_time.insert(0, target_time.strftime("%H:%M"))
+                        
+                        self.lbl_quick_status.configure(
+                            text=f"✓ Using custom time: {target_time.strftime('%Y-%m-%d %H:%M')} (24h format)", 
+                            text_color=get_adaptive_success_color(self.is_dark_mode)
+                        )
+                        return
+                    else:
+                        self.lbl_quick_status.configure(
+                            text="⚠ Invalid time! Use 00:00 to 23:59 format", 
+                            text_color=get_adaptive_error_color(self.is_dark_mode)
+                        )
+                        return
+            except (ValueError, IndexError):
+                self.lbl_quick_status.configure(
+                    text="⚠ Invalid time format! Use HH:MM (e.g., 05:00)", 
+                    text_color=get_adaptive_error_color(self.is_dark_mode)
+                )
+                return
+        
+        # Default behavior: use current time + offset
         target_time = datetime.now() + offset
         
         self.quick_date.delete(0, "end")
@@ -803,7 +851,10 @@ class App(ctk.CTk):
         
         try:
             dt = datetime.strptime(f"{scheduled_date} {scheduled_time}", "%Y-%m-%d %H:%M")
-            scheduled_start_time = dt.isoformat() + 'Z'
+            # Convert local time to UTC
+            utc_offset_seconds = datetime.now().astimezone().utcoffset().total_seconds()
+            dt_utc = dt - timedelta(seconds=utc_offset_seconds)
+            scheduled_start_time = dt_utc.isoformat() + 'Z'
         except:
             messagebox.showerror("Error", "Invalid date/time format")
             return
@@ -890,35 +941,136 @@ class App(ctk.CTk):
         
         ctk.CTkLabel(datetime_frame, text="⏰ Schedule Time (Applied to ALL broadcasts):").pack(anchor="w", padx=10, pady=5)
         
+        # Specific Time Input (24h format)
+        time_input_frame = ctk.CTkFrame(datetime_frame, fg_color="transparent")
+        time_input_frame.pack(fill="x", padx=10, pady=5)
+        
+        ctk.CTkLabel(time_input_frame, text="🕐 Set Broadcast Time (24h format):", 
+                    font=ctk.CTkFont(size=11, weight="bold")).pack(side="left", padx=5)
+        
+        self.batch_specific_time = ctk.CTkEntry(time_input_frame, width=100, placeholder_text="HH:MM")
+        self.batch_specific_time.pack(side="left", padx=5)
+        self.batch_specific_time.insert(0, "05:00")  # Default: 05:00
+        self.batch_specific_time.bind("<KeyRelease>", lambda e: self.update_batch_datetime())
+        
+        ctk.CTkLabel(time_input_frame, text="(e.g., 05:00 for 5 AM, 17:30 for 5:30 PM)",
+                    font=ctk.CTkFont(size=9), 
+                    text_color=get_adaptive_gray_color(self.is_dark_mode)).pack(side="left", padx=5)
+        
+        # Multiple Base Time Selection
+        multitime_label_frame = ctk.CTkFrame(datetime_frame, fg_color="transparent")
+        multitime_label_frame.pack(fill="x", padx=10, pady=5)
+        
+        ctk.CTkLabel(multitime_label_frame, text="📋 Select Days:", 
+                    font=ctk.CTkFont(size=11, weight="bold")).pack(side="left", padx=5)
+        ctk.CTkLabel(multitime_label_frame, text="(Select multiple days to schedule broadcasts)",
+                    font=ctk.CTkFont(size=9), 
+                    text_color=get_adaptive_gray_color(self.is_dark_mode)).pack(side="left", padx=5)
+        
+        # Create scrollable frame for multiple time checkboxes
+        multitime_scroll = ctk.CTkScrollableFrame(datetime_frame, height=120, fg_color=("#F0F0F0", "#2C2C2C"))
+        multitime_scroll.pack(fill="x", padx=10, pady=5)
+        
+        # Time options with checkboxes
+        self.base_time_options = {}
+        time_choices = ["Now", "+1 day", "+2 days", "+3 days", "+4 days", 
+                       "+5 days", "+6 days", "+7 days"]
+        
+        # Default: Select all 7 days (not "Now")
+        default_selected = ["+1 day", "+2 days", "+3 days", "+4 days", 
+                           "+5 days", "+6 days", "+7 days"]
+        
+        for i, time_choice in enumerate(time_choices):
+            row_frame = ctk.CTkFrame(multitime_scroll, fg_color="transparent")
+            row_frame.pack(fill="x", pady=2)
+            
+            var = ctk.BooleanVar(value=(time_choice in default_selected))
+            checkbox = ctk.CTkCheckBox(
+                row_frame, 
+                text=time_choice,
+                variable=var,
+                width=150,
+                command=self.update_batch_datetime
+            )
+            checkbox.pack(side="left", padx=5)
+            
+            # Add preview time label
+            time_label = ctk.CTkLabel(
+                row_frame, 
+                text="",
+                font=ctk.CTkFont(size=9),
+                text_color=get_adaptive_gray_color(self.is_dark_mode)
+            )
+            time_label.pack(side="left", padx=10)
+            
+            self.base_time_options[time_choice] = {"var": var, "label": time_label}
+        
+        # Interval and quick action buttons
         time_controls = ctk.CTkFrame(datetime_frame)
         time_controls.pack(fill="x", padx=10, pady=5)
         
-        ctk.CTkLabel(time_controls, text="Base Time:").pack(side="left", padx=5)
-        self.batch_time_offset = ctk.CTkComboBox(
-            time_controls,
-            values=["Now", "+15 min", "+30 min", "+1 hour", "+2 hours", "+6 hours", "+12 hours", "+1 day", "+2 days", "+7 days"],
-            width=150,
-            command=self.update_batch_datetime
-        )
-        self.batch_time_offset.pack(side="left", padx=5)
-        self.batch_time_offset.set("+30 min")
-        
-        ctk.CTkLabel(time_controls, text="Interval:").pack(side="left", padx=5)
+        ctk.CTkLabel(time_controls, text="Interval:", 
+                    font=ctk.CTkFont(size=11, weight="bold")).pack(side="left", padx=5)
         self.batch_interval = ctk.CTkComboBox(
             time_controls,
             values=["0 min (all same)", "+5 min", "+10 min", "+15 min", "+30 min", "+1 hour", "+2 hours", "+1 day"],
-            width=150
+            width=150,
+            command=self.update_batch_datetime
         )
         self.batch_interval.pack(side="left", padx=5)
         self.batch_interval.set("0 min (all same)")
         
-        ctk.CTkButton(time_controls, text="🔄 Update", command=self.update_batch_datetime).pack(side="left", padx=5)
+        ctk.CTkButton(
+            time_controls, 
+            text="ℹ️ What is Interval?", 
+            command=self.show_interval_explanation,
+            width=120,
+            height=28,
+            fg_color=("#3498db", "#2980b9"),
+            font=ctk.CTkFont(size=10)
+        ).pack(side="left", padx=5)
         
-        self.batch_date = ctk.CTkEntry(time_controls, width=100)
-        self.batch_date.pack(side="left", padx=5)
+        # Quick selection buttons
+        quick_select_frame = ctk.CTkFrame(datetime_frame)
+        quick_select_frame.pack(fill="x", padx=10, pady=5)
         
-        self.batch_time = ctk.CTkEntry(time_controls, width=80)
-        self.batch_time.pack(side="left", padx=5)
+        ctk.CTkButton(
+            quick_select_frame, 
+            text="✓ Select All", 
+            command=lambda: self.toggle_all_times(True),
+            width=100,
+            height=25,
+            fg_color="#2E7D32"
+        ).pack(side="left", padx=3)
+        
+        ctk.CTkButton(
+            quick_select_frame, 
+            text="✗ Deselect All", 
+            command=lambda: self.toggle_all_times(False),
+            width=100,
+            height=25,
+            fg_color="#DC143C"
+        ).pack(side="left", padx=3)
+        
+        ctk.CTkButton(
+            quick_select_frame, 
+            text="🔄 Refresh Preview", 
+            command=self.update_batch_datetime,
+            width=120,
+            height=25
+        ).pack(side="left", padx=3)
+        
+        # 30 Days Shortcut Checkbox
+        days_30_frame = ctk.CTkFrame(datetime_frame, fg_color=("#E8F5E9", "#1B5E20"), corner_radius=8)
+        days_30_frame.pack(fill="x", padx=10, pady=10)
+        
+        self.schedule_30_days = ctk.CTkCheckBox(
+            days_30_frame,
+            text="📅 Schedule 30 Days (Overrides individual day selection)",
+            font=ctk.CTkFont(size=12, weight="bold"),
+            command=self.on_30_days_toggle
+        )
+        self.schedule_30_days.pack(padx=10, pady=8)
         
         self.lbl_batch_time_info = ctk.CTkLabel(datetime_frame, text="", 
                                                text_color=get_adaptive_gray_color(self.is_dark_mode))
@@ -1065,36 +1217,210 @@ class App(ctk.CTk):
                                                    text_color=get_adaptive_gray_color(self.is_dark_mode))
             self.log_message("[INFO] Global monetization disabled - using Excel settings")
     
+    def toggle_all_times(self, select=True):
+        """Select or deselect all base time checkboxes"""
+        for time_choice, widgets in self.base_time_options.items():
+            widgets["var"].set(select)
+        self.update_batch_datetime()
+    
+    def on_30_days_toggle(self):
+        """Handle 30 days checkbox toggle"""
+        is_30_days_mode = self.schedule_30_days.get()
+        
+        if is_30_days_mode:
+            # Disable individual checkboxes when 30 days mode is active
+            for time_choice, widgets in self.base_time_options.items():
+                widgets["var"].set(False)
+            self.log_message("[INFO] 30 Days mode enabled - will schedule broadcasts for 30 consecutive days")
+        else:
+            # Re-enable individual selection
+            self.log_message("[INFO] 30 Days mode disabled - using individual day selection")
+        
+        self.update_batch_datetime()
+    
+    def show_interval_explanation(self):
+        """Show explanation about interval feature"""
+        explanation = """
+🕒 APA ITU INTERVAL?
+
+Interval adalah jarak waktu antara setiap broadcast yang dijadwalkan.
+
+CONTOH PENGGUNAAN:
+
+1️⃣ "0 min (all same)" = Semua Broadcast di Waktu yang Sama
+   • Base Time: +1 day (besok jam 10:00)
+   • Interval: 0 min
+   • Hasil: Semua 10 broadcast dijadwalkan besok jam 10:00
+
+2️⃣ "+15 min" = Jarak 15 Menit Antar Broadcast
+   • Base Time: +1 day (besok jam 10:00)
+   • Interval: +15 min
+   • Hasil: 
+     - Broadcast 1: Besok 10:00
+     - Broadcast 2: Besok 10:15
+     - Broadcast 3: Besok 10:30
+     - Broadcast 4: Besok 10:45, dst...
+
+3️⃣ "+1 hour" = Jarak 1 Jam Antar Broadcast
+   • Base Time: +1 day (besok jam 10:00)
+   • Interval: +1 hour
+   • Hasil:
+     - Broadcast 1: Besok 10:00
+     - Broadcast 2: Besok 11:00
+     - Broadcast 3: Besok 12:00, dst...
+
+4️⃣ "+1 day" = Jarak 1 Hari Antar Broadcast
+   • Base Time: +1 day (besok jam 10:00)
+   • Interval: +1 day
+   • Hasil:
+     - Broadcast 1: Besok 10:00
+     - Broadcast 2: Lusa 10:00
+     - Broadcast 3: 3 hari lagi 10:00, dst...
+
+📋 MULTIPLE BASE TIMES (DEFAULT):
+Secara default, 7 hari sudah tercentang!
+Sistem akan membuat batch terpisah untuk setiap hari.
+
+Contoh: 7 hari tercentang, interval "0 min", 1 row Excel
+• Batch 1: Besok jam 10:00
+• Batch 2: Lusa jam 10:00
+• Batch 3-7: 3-7 hari lagi, masing-masing jam 10:00
+→ Total: 7 broadcasts, satu per hari!
+        """
+        messagebox.showinfo("Penjelasan Interval", explanation)
+    
     def update_batch_datetime(self, choice=None):
+        """Update preview for all selected base times"""
         offset_map = {
             "Now": timedelta(0),
-            "+15 min": timedelta(minutes=15),
-            "+30 min": timedelta(minutes=30),
-            "+1 hour": timedelta(hours=1),
-            "+2 hours": timedelta(hours=2),
-            "+6 hours": timedelta(hours=6),
-            "+12 hours": timedelta(hours=12),
             "+1 day": timedelta(days=1),
             "+2 days": timedelta(days=2),
+            "+3 days": timedelta(days=3),
+            "+4 days": timedelta(days=4),
+            "+5 days": timedelta(days=5),
+            "+6 days": timedelta(days=6),
             "+7 days": timedelta(days=7)
         }
         
-        offset = offset_map.get(self.batch_time_offset.get(), timedelta(minutes=30))
-        target_time = datetime.now() + offset
+        # Get specific time from input (24h format HH:MM)
+        specific_time_str = self.batch_specific_time.get().strip()
+        use_specific_time = False
+        specific_hour = 0
+        specific_minute = 0
         
-        self.batch_date.delete(0, "end")
-        self.batch_date.insert(0, target_time.strftime("%Y-%m-%d"))
+        if specific_time_str:
+            try:
+                # Parse HH:MM format
+                time_parts = specific_time_str.split(':')
+                if len(time_parts) == 2:
+                    specific_hour = int(time_parts[0])
+                    specific_minute = int(time_parts[1])
+                    
+                    # Validate time
+                    if 0 <= specific_hour <= 23 and 0 <= specific_minute <= 59:
+                        use_specific_time = True
+                    else:
+                        self.lbl_batch_time_info.configure(
+                            text="⚠️ Invalid time! Use 00:00 to 23:59 format",
+                            text_color=get_adaptive_error_color(self.is_dark_mode)
+                        )
+                        return
+            except (ValueError, IndexError):
+                self.lbl_batch_time_info.configure(
+                    text="⚠️ Invalid time format! Use HH:MM (e.g., 05:00)",
+                    text_color=get_adaptive_error_color(self.is_dark_mode)
+                )
+                return
         
-        self.batch_time.delete(0, "end")
-        self.batch_time.insert(0, target_time.strftime("%H:%M"))
+        # Check if 30 days mode is enabled
+        is_30_days_mode = self.schedule_30_days.get()
         
-        interval_str = self.batch_interval.get()
-        if "all same" in interval_str:
-            info_text = f"All broadcasts will be scheduled at: {target_time.strftime('%Y-%m-%d %H:%M')}"
+        # Update preview for each time option
+        selected_times = []
+        
+        if is_30_days_mode:
+            # Generate 30 consecutive days
+            for day_num in range(1, 31):
+                if use_specific_time:
+                    base_date = datetime.now().date() + timedelta(days=day_num)
+                    target_time = datetime.combine(base_date, datetime.min.time())
+                    target_time = target_time.replace(hour=specific_hour, minute=specific_minute)
+                else:
+                    target_time = datetime.now() + timedelta(days=day_num)
+                
+                selected_times.append((f"+{day_num} day{'s' if day_num > 1 else ''}", target_time))
+            
+            # Update individual checkbox previews (for display only)
+            for time_choice, widgets in self.base_time_options.items():
+                offset = offset_map.get(time_choice, timedelta(minutes=30))
+                
+                if use_specific_time:
+                    base_date = datetime.now().date() + offset.days * timedelta(days=1)
+                    target_time = datetime.combine(base_date, datetime.min.time())
+                    target_time = target_time.replace(hour=specific_hour, minute=specific_minute)
+                else:
+                    target_time = datetime.now() + offset
+                
+                preview_text = f"→ {target_time.strftime('%Y-%m-%d %H:%M')}"
+                widgets["label"].configure(text=preview_text)
         else:
-            info_text = f"Start time: {target_time.strftime('%Y-%m-%d %H:%M')}, with {interval_str} interval between each"
+            # Normal mode: use individual checkbox selection
+            for time_choice, widgets in self.base_time_options.items():
+                offset = offset_map.get(time_choice, timedelta(minutes=30))
+                
+                if use_specific_time:
+                    # Use specific time set by user
+                    base_date = datetime.now().date() + offset.days * timedelta(days=1)
+                    target_time = datetime.combine(base_date, datetime.min.time())
+                    target_time = target_time.replace(hour=specific_hour, minute=specific_minute)
+                else:
+                    # Use current time + offset (original behavior)
+                    target_time = datetime.now() + offset
+                
+                # Update preview label
+                preview_text = f"→ {target_time.strftime('%Y-%m-%d %H:%M')}"
+                widgets["label"].configure(text=preview_text)
+                
+                # Track selected times
+                if widgets["var"].get():
+                    selected_times.append((time_choice, target_time))
         
-        self.lbl_batch_time_info.configure(text=info_text)
+        # Update info label
+        interval_str = self.batch_interval.get()
+        
+        if is_30_days_mode:
+            # Special info for 30 days mode
+            first_time = selected_times[0][1]
+            last_time = selected_times[-1][1]
+            if use_specific_time:
+                info_text = f"📅 30 DAYS MODE: Scheduling from {first_time.strftime('%Y-%m-%d')} to {last_time.strftime('%Y-%m-%d')} at {specific_time_str}\n"
+            else:
+                info_text = f"📅 30 DAYS MODE: Scheduling 30 consecutive days starting {first_time.strftime('%Y-%m-%d %H:%M')}\n"
+            info_text += f"    Interval: {interval_str} between each broadcast"
+        elif not selected_times:
+            info_text = "⚠️ Please select at least one day or enable 30 Days mode!"
+        elif len(selected_times) == 1:
+            time_choice, target_time = selected_times[0]
+            if "all same" in interval_str:
+                if use_specific_time:
+                    info_text = f"All broadcasts will be scheduled at: {target_time.strftime('%Y-%m-%d %H:%M')} (Custom Time)"
+                else:
+                    info_text = f"All broadcasts will be scheduled at: {target_time.strftime('%Y-%m-%d %H:%M')}"
+            else:
+                info_text = f"Start time: {target_time.strftime('%Y-%m-%d %H:%M')}, with {interval_str} interval"
+        else:
+            if use_specific_time:
+                info_text = f"📋 {len(selected_times)} days selected at {specific_time_str} (Custom Time), each with {interval_str} interval\n"
+            else:
+                info_text = f"📋 {len(selected_times)} different start times selected, each with {interval_str} interval\n"
+            info_text += "    Times: " + ", ".join([t.strftime('%Y-%m-%d %H:%M') for _, t in selected_times[:3]])
+            if len(selected_times) > 3:
+                info_text += f" ... (+{len(selected_times) - 3} more)"
+        
+        self.lbl_batch_time_info.configure(
+            text=info_text,
+            text_color=get_adaptive_text_color(self.is_dark_mode)
+        )
     
     def select_excel_file(self):
         file_path = filedialog.askopenfilename(
@@ -1162,13 +1488,77 @@ class App(ctk.CTk):
             messagebox.showerror("Error", "No data to process")
             return
         
-        scheduled_date = self.batch_date.get().strip()
-        scheduled_time = self.batch_time.get().strip()
+        # Get selected base times
+        offset_map = {
+            "Now": timedelta(0),
+            "+1 day": timedelta(days=1),
+            "+2 days": timedelta(days=2),
+            "+3 days": timedelta(days=3),
+            "+4 days": timedelta(days=4),
+            "+5 days": timedelta(days=5),
+            "+6 days": timedelta(days=6),
+            "+7 days": timedelta(days=7)
+        }
         
-        try:
-            base_dt = datetime.strptime(f"{scheduled_date} {scheduled_time}", "%Y-%m-%d %H:%M")
-        except:
-            messagebox.showerror("Error", "Invalid date/time format")
+        # Get specific time from input (24h format HH:MM)
+        specific_time_str = self.batch_specific_time.get().strip()
+        use_specific_time = False
+        specific_hour = 0
+        specific_minute = 0
+        
+        if specific_time_str:
+            try:
+                # Parse HH:MM format
+                time_parts = specific_time_str.split(':')
+                if len(time_parts) == 2:
+                    specific_hour = int(time_parts[0])
+                    specific_minute = int(time_parts[1])
+                    
+                    # Validate time
+                    if 0 <= specific_hour <= 23 and 0 <= specific_minute <= 59:
+                        use_specific_time = True
+                    else:
+                        messagebox.showerror("Error", "Invalid time! Use 00:00 to 23:59 format")
+                        return
+            except (ValueError, IndexError):
+                messagebox.showerror("Error", "Invalid time format! Use HH:MM (e.g., 05:00)")
+                return
+        
+        # Check if 30 days mode is enabled
+        is_30_days_mode = self.schedule_30_days.get()
+        
+        selected_base_times = []
+        
+        if is_30_days_mode:
+            # Generate 30 consecutive days
+            for day_num in range(1, 31):
+                if use_specific_time:
+                    base_date = datetime.now().date() + timedelta(days=day_num)
+                    base_dt = datetime.combine(base_date, datetime.min.time())
+                    base_dt = base_dt.replace(hour=specific_hour, minute=specific_minute)
+                else:
+                    base_dt = datetime.now() + timedelta(days=day_num)
+                
+                selected_base_times.append((f"+{day_num} day{'s' if day_num > 1 else ''}", base_dt))
+        else:
+            # Normal mode: use individual checkbox selection
+            for time_choice, widgets in self.base_time_options.items():
+                if widgets["var"].get():
+                    offset = offset_map.get(time_choice, timedelta(days=1))
+                    
+                    if use_specific_time:
+                        # Use specific time set by user
+                        base_date = datetime.now().date() + offset.days * timedelta(days=1)
+                        base_dt = datetime.combine(base_date, datetime.min.time())
+                        base_dt = base_dt.replace(hour=specific_hour, minute=specific_minute)
+                    else:
+                        # Use current time + offset (original behavior)
+                        base_dt = datetime.now() + offset
+                    
+                    selected_base_times.append((time_choice, base_dt))
+        
+        if not selected_base_times:
+            messagebox.showerror("Error", "Please select at least one day or enable 30 Days mode!")
             return
         
         interval_map = {
@@ -1183,53 +1573,100 @@ class App(ctk.CTk):
         }
         
         interval = interval_map.get(self.batch_interval.get(), timedelta(0))
+        force_monetization = self.batch_force_monetization.get()
         
         def process_thread():
             self.btn_process.configure(state="disabled")
             
-            force_monetization = self.batch_force_monetization.get()
             if force_monetization:
                 self.log_message(f"\n{'='*50}\n[MONETIZATION] Global monetization is ENABLED - All broadcasts will have monetization turned ON\n{'='*50}\n")
             
-            self.log_message(f"\n{'='*50}\nStarting batch process: {len(rows)} broadcasts\n{'='*50}\n")
+            self.log_message(f"\n{'='*60}")
+            if is_30_days_mode:
+                self.log_message(f"STARTING 30 DAYS BATCH PROCESS")
+                self.log_message(f"{'='*60}")
+                self.log_message(f"Mode: 📅 30 CONSECUTIVE DAYS")
+            else:
+                self.log_message(f"STARTING MULTI-TIME BATCH PROCESS")
+                self.log_message(f"{'='*60}")
+            self.log_message(f"Total broadcasts per batch: {len(rows)}")
+            self.log_message(f"Number of days/batches: {len(selected_base_times)}")
+            self.log_message(f"Interval between broadcasts: {self.batch_interval.get()}")
+            if use_specific_time:
+                self.log_message(f"Custom time: {specific_time_str} (24h format)")
+            self.log_message(f"{'='*60}\n")
             
-            success_count = 0
-            error_count = 0
+            total_success = 0
+            total_errors = 0
             
-            for idx, row_data in enumerate(rows):
-                if "error" in row_data:
-                    self.log_message(f"[X] Skipped: {row_data['error']}")
-                    error_count += 1
-                    continue
+            # Process for each selected base time
+            for batch_idx, (time_choice, base_dt) in enumerate(selected_base_times, 1):
+                self.log_message(f"\n{'='*60}")
+                self.log_message(f"📋 BATCH {batch_idx}/{len(selected_base_times)}: {time_choice}")
+                self.log_message(f"Start time: {base_dt.strftime('%Y-%m-%d %H:%M')}")
+                self.log_message(f"{'='*60}\n")
                 
-                if not row_data.get("scheduledStartTime"):
-                    broadcast_time = base_dt + (interval * idx)
-                    row_data["scheduledStartTime"] = broadcast_time.isoformat() + 'Z'
-                    self.log_message(f"[INFO] Scheduled for: {broadcast_time.strftime('%Y-%m-%d %H:%M')}")
+                success_count = 0
+                error_count = 0
                 
-                # Apply global monetization override
-                if force_monetization:
-                    row_data["enableMonetization"] = True
-                    self.log_message(f"[INFO] Monetization forced ON for this broadcast")
+                for idx, row_data in enumerate(rows):
+                    # Create a copy to avoid modifying original
+                    row_copy = row_data.copy()
+                    
+                    if "error" in row_copy:
+                        self.log_message(f"[X] Skipped: {row_copy['error']}")
+                        error_count += 1
+                        continue
+                    
+                    # Calculate broadcast time for this base time
+                    if not row_copy.get("scheduledStartTime"):
+                        broadcast_time = base_dt + (interval * idx)
+                        # Convert local time to UTC
+                        utc_offset_seconds = datetime.now().astimezone().utcoffset().total_seconds()
+                        broadcast_time_utc = broadcast_time - timedelta(seconds=utc_offset_seconds)
+                        row_copy["scheduledStartTime"] = broadcast_time_utc.isoformat() + 'Z'
+                        self.log_message(f"[{idx+1}] Scheduled for: {broadcast_time.strftime('%Y-%m-%d %H:%M')} (Local) - {row_copy.get('title', 'No title')[:50]}")
+                    
+                    # Apply global monetization override
+                    if force_monetization:
+                        row_copy["enableMonetization"] = True
+                    
+                    success, result = self.youtube_service.process_broadcast(
+                        row_copy, 
+                        log_callback=self.log_message
+                    )
+                    
+                    if success:
+                        success_count += 1
+                    else:
+                        error_count += 1
+                        self.log_message(f"[X] Error detail: {result}\n")
                 
-                success, result = self.youtube_service.process_broadcast(
-                    row_data, 
-                    log_callback=self.log_message
-                )
+                self.log_message(f"\n{'='*60}")
+                self.log_message(f"Batch {batch_idx} ({time_choice}) Complete!")
+                self.log_message(f"[OK] Success: {success_count} | [X] Errors: {error_count}")
+                self.log_message(f"{'='*60}\n")
                 
-                if success:
-                    success_count += 1
-                else:
-                    error_count += 1
-                    self.log_message(f"[X] Error detail: {result}\n")
+                total_success += success_count
+                total_errors += error_count
             
-            self.log_message(f"\n{'='*50}\nBatch Complete!")
-            self.log_message(f"[OK] Success: {success_count}")
-            self.log_message(f"[X] Errors: {error_count}")
-            self.log_message(f"{'='*50}\n")
+            # Final summary
+            self.log_message(f"\n{'='*60}")
+            self.log_message(f"🎉 ALL BATCHES COMPLETE!")
+            self.log_message(f"{'='*60}")
+            self.log_message(f"Total batches processed: {len(selected_base_times)}")
+            self.log_message(f"Total broadcasts created: {total_success}")
+            self.log_message(f"Total errors: {total_errors}")
+            self.log_message(f"{'='*60}\n")
             
             self.btn_process.configure(state="normal")
-            messagebox.showinfo("Complete", f"Batch processing complete!\n\nSuccess: {success_count}\nErrors: {error_count}")
+            
+            summary = f"Multi-Time Batch Processing Complete!\n\n"
+            summary += f"Batches: {len(selected_base_times)}\n"
+            summary += f"Total Success: {total_success}\n"
+            summary += f"Total Errors: {total_errors}"
+            
+            messagebox.showinfo("Complete", summary)
         
         threading.Thread(target=process_thread, daemon=True).start()
     
@@ -1406,15 +1843,31 @@ class App(ctk.CTk):
             self.log_message("✗ No data to process")
             return
         
-        scheduled_date = self.batch_date.get().strip()
-        scheduled_time = self.batch_time.get().strip()
+        # Get selected base times
+        offset_map = {
+            "Now": timedelta(0),
+            "+1 day": timedelta(days=1),
+            "+2 days": timedelta(days=2),
+            "+3 days": timedelta(days=3),
+            "+4 days": timedelta(days=4),
+            "+5 days": timedelta(days=5),
+            "+6 days": timedelta(days=6),
+            "+7 days": timedelta(days=7)
+        }
         
-        try:
-            base_dt = datetime.strptime(f"{scheduled_date} {scheduled_time}", "%Y-%m-%d %H:%M")
-        except:
-            # If date/time parsing fails, use current time + 30 minutes
-            base_dt = datetime.now() + timedelta(minutes=30)
-            self.log_message(f"⚠ Using default time: {base_dt.strftime('%Y-%m-%d %H:%M')}")
+        selected_base_times = []
+        for time_choice, widgets in self.base_time_options.items():
+            if widgets["var"].get():
+                offset = offset_map.get(time_choice, timedelta(days=1))
+                base_dt = datetime.now() + offset
+                selected_base_times.append((time_choice, base_dt))
+        
+        # If no time selected, use default (7 days)
+        if not selected_base_times:
+            self.log_message(f"⚠ No base time selected, using default: 7 days")
+            for day in range(1, 8):
+                base_dt = datetime.now() + timedelta(days=day)
+                selected_base_times.append((f"+{day} day(s) (default)", base_dt))
         
         interval_map = {
             "0 min (all same)": timedelta(0),
@@ -1428,46 +1881,79 @@ class App(ctk.CTk):
         }
         
         interval = interval_map.get(self.batch_interval.get(), timedelta(0))
-        
         force_monetization = self.batch_force_monetization.get()
+        
         if force_monetization:
-            self.log_message(f"\n{'='*50}\n[MONETIZATION] Global monetization is ENABLED - All broadcasts will have monetization turned ON\n{'='*50}\n")
+            self.log_message(f"\n{'='*50}\n[MONETIZATION] Global monetization is ENABLED\n{'='*50}\n")
         
-        self.log_message(f"\n{'='*50}\nStarting scheduled batch: {len(rows)} broadcasts\n{'='*50}\n")
+        self.log_message(f"\n{'='*60}")
+        self.log_message(f"SCHEDULED MULTI-TIME BATCH PROCESS")
+        self.log_message(f"{'='*60}")
+        self.log_message(f"Total broadcasts: {len(rows)}")
+        self.log_message(f"Number of base times: {len(selected_base_times)}")
+        self.log_message(f"Interval: {self.batch_interval.get()}")
+        self.log_message(f"{'='*60}\n")
         
-        success_count = 0
-        error_count = 0
+        total_success = 0
+        total_errors = 0
         
-        for idx, row_data in enumerate(rows):
-            if "error" in row_data:
-                self.log_message(f"[X] Skipped: {row_data['error']}")
-                error_count += 1
-                continue
+        # Process for each selected base time
+        for batch_idx, (time_choice, base_dt) in enumerate(selected_base_times, 1):
+            self.log_message(f"\n{'='*60}")
+            self.log_message(f"📋 BATCH {batch_idx}/{len(selected_base_times)}: {time_choice}")
+            self.log_message(f"Start time: {base_dt.strftime('%Y-%m-%d %H:%M')}")
+            self.log_message(f"{'='*60}\n")
             
-            if not row_data.get("scheduledStartTime"):
-                broadcast_time = base_dt + (interval * idx)
-                row_data["scheduledStartTime"] = broadcast_time.isoformat() + 'Z'
-                self.log_message(f"[INFO] Scheduled for: {broadcast_time.strftime('%Y-%m-%d %H:%M')}")
+            success_count = 0
+            error_count = 0
             
-            if force_monetization:
-                row_data["enableMonetization"] = True
-                self.log_message(f"[INFO] Monetization forced ON for this broadcast")
+            for idx, row_data in enumerate(rows):
+                # Create a copy to avoid modifying original
+                row_copy = row_data.copy()
+                
+                if "error" in row_copy:
+                    self.log_message(f"[X] Skipped: {row_copy['error']}")
+                    error_count += 1
+                    continue
+                
+                if not row_copy.get("scheduledStartTime"):
+                    broadcast_time = base_dt + (interval * idx)
+                    # Convert local time to UTC
+                    utc_offset_seconds = datetime.now().astimezone().utcoffset().total_seconds()
+                    broadcast_time_utc = broadcast_time - timedelta(seconds=utc_offset_seconds)
+                    row_copy["scheduledStartTime"] = broadcast_time_utc.isoformat() + 'Z'
+                    self.log_message(f"[{idx+1}] Scheduled for: {broadcast_time.strftime('%Y-%m-%d %H:%M')} (Local) - {row_copy.get('title', 'No title')[:50]}")
+                
+                if force_monetization:
+                    row_copy["enableMonetization"] = True
+                
+                success, result = self.youtube_service.process_broadcast(
+                    row_copy, 
+                    log_callback=self.log_message
+                )
+                
+                if success:
+                    success_count += 1
+                else:
+                    error_count += 1
+                    self.log_message(f"[X] Error detail: {result}\n")
             
-            success, result = self.youtube_service.process_broadcast(
-                row_data, 
-                log_callback=self.log_message
-            )
+            self.log_message(f"\n{'='*60}")
+            self.log_message(f"Batch {batch_idx} ({time_choice}) Complete!")
+            self.log_message(f"[OK] Success: {success_count} | [X] Errors: {error_count}")
+            self.log_message(f"{'='*60}\n")
             
-            if success:
-                success_count += 1
-            else:
-                error_count += 1
-                self.log_message(f"[X] Error detail: {result}\n")
+            total_success += success_count
+            total_errors += error_count
         
-        self.log_message(f"\n{'='*50}\nScheduled Batch Complete!")
-        self.log_message(f"[OK] Success: {success_count}")
-        self.log_message(f"[X] Errors: {error_count}")
-        self.log_message(f"{'='*50}\n")
+        # Final summary
+        self.log_message(f"\n{'='*60}")
+        self.log_message(f"🎉 ALL SCHEDULED BATCHES COMPLETE!")
+        self.log_message(f"{'='*60}")
+        self.log_message(f"Total batches processed: {len(selected_base_times)}")
+        self.log_message(f"Total broadcasts created: {total_success}")
+        self.log_message(f"Total errors: {total_errors}")
+        self.log_message(f"{'='*60}\n")
     
     def setup_upcoming_tab(self):
         frame = ctk.CTkFrame(self.tab_upcoming)
